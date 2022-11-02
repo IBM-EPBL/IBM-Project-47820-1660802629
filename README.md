@@ -4,6 +4,6 @@ Signs with Smart Connectivity for Better Road Safety
 
 Team Leader: Naveen.M.V
 
-Members: S.Hilaludeen
-         E.IshWarya
-         M.Sakthi
+Members: S.Hilaludeen,      
+         E.IshWarya,        
+         M.Sakthi,      
