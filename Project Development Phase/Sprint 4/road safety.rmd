@@ -1,0 +1,18 @@
+---
+title: "RoadSafety"
+author: "Amol | Haojun | Japneet | Calum"
+date: "11/11/2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+#Creating make n model data frame
+#reading excel file
+m_m <- readxl::read_excel('.\\DATA\\make_n_model\\mmAll.xlsx')
+#demo tag
+nrow(m_m)
+# m_m <- full_join(m_m13, m_m14)
+# paste(colnames(m_m13), " = ", colnames(m_m18))
+```
