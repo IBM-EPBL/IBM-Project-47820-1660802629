@@ -1,0 +1,170 @@
+---
+title: " Project – Signs with Smart Connectivity for Better Road Safety "
+
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#ggparcoord
+#geom_polygon => packcircles
+
+```
+
+
+
+## Libraries
+
+```{r cars}
+suppressMessages(library(readxl)) 
+suppressMessages( library(dplyr))
+suppressMessages( library(tidyr))
+suppressMessages( library(ggplot2))
+suppressMessages( library(MASS))
+suppressMessages( library(GGally))
+suppressMessages( library(ggExtra))
+suppressMessages( library(plotly))
+suppressMessages( library(packcircles))
+```
+
+
+
+## Preparing The Data For Analysis
+```{r}
+df <- read_excel("mmAll.xlsx")
+#d13 <- read_excel("m_m2013.xlsx")
+#d14 <- read_excel("m_m2014.xlsx")
+#d15 <- read_excel("m_m2015.xlsx")
+#d16 <- read.csv("m_m2016.csv", header = T)
+#d17 <- read_excel("m_m2017.xlsx")
+#d18 <- read_excel("m_m2018.xlsx")
+
+
+names(df)[9] <- "Vehicle and Safety Equipment"
+names(df)[10] <- "Vehicle and Safety Equipment %"
+names(df)[22] <- "Chassis and Body %"
+names(df)[26] <- "Suspension Test %"
+names(df)[36] <- "Incomplete Tests %"
+
+df$reportYear <- as.factor(df$reportYear)
+```
+
+
+
+
+## Which part failed the most per report year?
+```{r, echo=FALSE}
+######DATA#######
+cols <- c("VehicleMake", "Vehicle and Safety Equipment", "Lighting and Electrical", "Steering and Suspension", "Braking Equipment", "Wheels and Tyres", "Engine, Noise and Exhaust",  "Chassis and Body", "Side Slip Test", "Suspension Test", "Light test", "Brake Test", "Emmissions", "OTHER")
+
+m <- df %>% dplyr :: select(c("reportYear", cols)) %>% group_by(reportYear) %>% summarise_if(is.numeric, mean, na.rm = TRUE)
+m <- gather(m,-reportYear, key=Part, value= Failures)
+
+```
+
+
+```{r}
+######PLOT#######
+#ggplot(m, aes(x=factor(reportYear), y=, colour=supp, group=supp)) + geom_line()
+
+library(MASS)
+library(GGally)
+# Vector color
+library(RColorBrewer)
+palette <- brewer.pal(3, "Set1") 
+ my_colors <- palette[as.numeric(m$reportYear)]
+
+#names(x) <- c("2013","2014","2015","2016","2017","2018")
+#p <- ggparcoord(m, columns=2:13, groupColumn = "reportYear")+geom_line(size=0.3)+theme_minimal() + geom_point()+
+#  xlab("Car Part")+ylab("Average failure rate")
+
+
+ggplotly(ggplot(data=m, mapping = aes(x = reportYear, y = Failures, colour = Part, group=1))+
+  geom_point()+
+    geom_line()+xlab("Report Year")+ ylab("Average Number of Failures")
+
+)
+```
+
+
+
+
+
+
+
+
+
+## Equipment Failures -  Overall Statistics 
+
+```{r}
+library(ggplot2)
+cols <- c("Vehicle and Safety Equipment", "Lighting and Electrical", "Steering and Suspension", "Braking Equipment", "Wheels and Tyres", "Engine, Noise and Exhaust",  "Chassis and Body", "Side Slip Test", "Suspension Test", "Light test", "Brake Test", "Emmissions", "OTHER")
+a <- df %>% dplyr::select(cols)
+b<-colSums(a)
+c <- data.frame(Part = names(b), Percent = unname(b)/sum(df$Total)*100)
+ggplot(c)+
+  geom_col(mapping = aes(x = reorder(Part, -Percent), y = Percent, fill = Percent), col="black")+ xlab("")+
+  ylab("Failure Percentage(%)") +
+  scale_fill_gradient(low = "orange", high = "tan")+
+  coord_flip()
+
+```
+
+
+
+### There is a bug in this code. Can anybody fix it?
+```{r, eval=FALSE}
+####The polygon graph representation of the above data####
+l <- data.frame(Part = names(b), Total = unname(b))
+packing <- circleProgressiveLayout(l$Total,sizetype='area')
+l$packing <- packing
+l
+dat.gg <- circleLayoutVertices(packing, npoints=50)
+
+
+
+p <- ggplot() + geom_polygon(data = dat.gg, aes(x, y, group = id, fill=as.factor(id)), colour = "black", alpha = 0.6) + geom_text(data = l, aes(x, y, size = Total, label = Part))+scale_size_continuous(range = c(1,4)) +theme_void() +theme(legend.position="none") + coord_equal()
+
+
+
+ggplotly(p, tooltip = c("Total", "Part"))
+
+
+```
+
+
+
+
+
+
+```{r}
+z <- df %>% group_by(VehicleMake) %>% summarise(tot=sum(Total),res = sum(PASS)/sum(Total)) %>%  arrange(desc(tot)) %>% print(Inf())
+``` 
+
+
+```{r}
+
+require(scales)
+q <- z %>% arrange(desc(tot)) %>% slice(1:15) 
+
+ggplot(q)+
+  geom_col(mapping = aes(x = reorder(VehicleMake, -tot), y = tot, fill = "green"))+ xlab("Vehicle Make")+ylab("Number of Vehicles") + coord_flip()+ theme(legend.position = "none")+ 
+  scale_y_continuous(labels = comma)
+
+#ggMarginal(g, type = "histogram", fill="transparent")
+```
+
+
+
+
+## Pass Percentage versus Number of Vehicles for a given VehicleMake
+```{r}
+require(scales)
+library(plotly)
+p <- ggplot(q, aes(x = tot, y = res*100))+
+  geom_line(color = "red")+
+  geom_point(aes(text = VehicleMake))+xlab("Number of Vehicles") + ylab("Pass Percentage (%)") +
+  scale_x_continuous(labels = comma)
+
+ggplotly(p, tooltip = "text")  
+```
