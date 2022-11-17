@@ -1,0 +1,103 @@
+---
+pagetitle: "Analysis based on test centres"
+author: "Amol Nanaware"
+date: "06/12/2019"
+always_allow_html: true
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, echo=FALSE, include=FALSE}
+packages <- c("plotly", "tidyverse")
+newPackages <- packages[!(packages %in% installed.packages()[,"Package"])]
+if(length(newPackages)) install.packages(newPackages)
+
+library(tidyverse)
+library(plotly)
+
+```
+
+```{r,echo=FALSE}
+load("passfail.RData")
+passfail <- passfail %>% 
+  mutate(totalFails = Fail1 + ifelse(is.na(Fail2), 0, Fail2), Totalpass = Pass1 + ifelse(is.na(Pass2), 0, Pass2))
+```
+
+
+```{r,echo=FALSE}
+
+passfailGroup <- summarise(group_by(passfail, Centre), Pass1 = sum(Pass1), Fail1 = sum(Fail1), Total1 = sum(Total1), Pass2 = sum(Pass2, na.rm = T), Fail2 = sum(Fail2, na.rm = T), Total2 = sum(Total2, na.rm = T), Totalpass = sum(Totalpass), totalFails = sum(totalFails))
+
+passfailGroup <- mutate(passfailGroup, Pass1prop = Pass1/Total1, Pass2prop = Pass2/Total2, totalPassProp = (Totalpass / (Total1 + Total2)), totalFailsProp = (totalFails / (Total1 + Total2)))
+
+```
+
+
+```{r,echo=FALSE}
+passfailGroup$totalPassProp = round((passfailGroup$totalPassProp * 100), digits = 2)
+passfailGroup$totalFailsProp = round((passfailGroup$totalFailsProp * 100), digits = 2)
+
+passFailGroup1 <- passfailGroup[c(1, 8)]
+passFailGroup1$Test <- "Pass"
+names(passFailGroup1) <- c("Centre", "Count", "Test")
+passFailGroup2 <- passfailGroup[c(1, 9)]
+passFailGroup2$Test <- "Fail"
+names(passFailGroup2) <- c("Centre", "Count", "Test")
+passFailcount <- rbind(passFailGroup1, passFailGroup2)
+```
+
+### Analysis based on test centres
+<br/>In this section we will analyse data from 2013 till 2018 about each test centre. As shown in the <a href = "https://github.com/NanawareAmol/R-project_Road-safety/blob/master/Result/loc_spread_across_ireland.JPG">map</a>, the test centres are spread across the Ireland and the number of centres is more in highly populated areas such as dublin, cork etc. 
+
+The bar chart shows the total number of tests that each centre performed and the total pass and fail counts as well as percentages. So, based on the test counts, the top 3 test centre are, *Fonthill(770685)*, *Deansgrade(767484)*, and *Northpoint 2(729661)*. The botton 3 centres which performed less tests are, *Donegal Town(16315)*, *Cahirciveen(28806)* and *Clifden(38683)*.
+
+```{r,echo=FALSE, fig.width=9,fig.height=4}
+p <- plot_ly(passfailGroup, x = ~passfailGroup$Centre, y = ~passfailGroup$Totalpass, type = 'bar', name = 'Pass', text = paste("Total tests = ", (passfailGroup$Totalpass+passfailGroup$totalFails), "<br>Passed =", passfailGroup$totalPassProp,"%", "<br>Failed =", passfailGroup$totalFailsProp,"%"), opacity = 0.5, marker = list(color = '#3AC3E3', line = list(color = '#0D6EB0', width = 1))) %>%
+  add_trace(y = ~passfailGroup$totalFails, name = 'Fails', opacity = 0.5,
+            marker = list(color = '#0E84FF', line = list(color = '#0D6EB0', width = 1))) %>%
+  layout(yaxis = list(title = 'Count'), xaxis = list(title = 'Test Centres'), barmode = 'stack')
+p
+```
+
+#### <b>Total test passed for each test centre</b>
+The following scatter plot show the total test pass count for each test centre from the year 2013 till year 2018. The questions that can be answered by this graph are, <br/>
+1. which are the top 3 and last 3 centres based on total pass count?<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>(Deansgrade, Northpoint 2, Fonthill and Cahirciveen, Clifden, derrybeg resp.)</b><br/>
+2. Which year has the highest and lowest total pass count?<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>2015 and 2014 respectively</b><br/>
+But, in this graph we are not considering the total tests performed by the test centres which shows the actual performance of the tests. For this we will plot another graph.
+<br/><br/>
+```{r,echo=FALSE, fig.width=9,fig.height=4}
+#scatter plot for centre total pass per year
+ggplot(data = passfail, aes(x = fct_reorder(Centre, -Totalpass), y = Totalpass, color = Year,  size = Totalpass)) + geom_point(alpha = 0.5) + 
+  theme(axis.text.x = element_text(size=9, angle=-90, hjust = 0, vjust = 0.5), axis.ticks.x = element_blank(), panel.background = element_rect(fill = "white", colour = "lightblue"),
+  panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "lightblue")) + 
+  labs(x = "Test Centres", y = "Totol pass count")
+```
+
+#### <b>Test performance for each test centre</b>
+The graph gives the overall idea of the test performance based on pass rate and the year.
+As per the graph we can say that for year 2013, 2015, 2016, 2017 and 2018, the pass rate is higher that 55%. And the highest and lowest performance found in Kilkenny and Monaghan test centres respectively.<br/><br/>
+```{r,echo=FALSE, fig.width=9,fig.height=4}
+passfail$totPassPercentage <- round((passfail$Totalpass / (passfail$Totalpass + passfail$totalFails)) * 100, digits = 2)
+
+passfail$totFailPercentage <- round((passfail$totalFails / (passfail$Totalpass + passfail$totalFails)) * 100, digits = 2)
+
+#scatter plot for centre pass percetage per year
+ggplot(data = passfail, aes(x = fct_reorder(Centre, -totPassPercentage), y = totPassPercentage, color = Year,  size = totPassPercentage)) + geom_point(alpha = 0.5) + 
+  theme(axis.text.x = element_text(size=9, angle=-90, hjust = 0, vjust = 0.5), axis.ticks.x = element_blank(), panel.background = element_rect(fill = "white", colour = "lightblue"),
+  panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "lightblue")) + 
+  labs(x = "Test Centres", y = "Total Pass %")#title = "Test centre pass% per year", 
+```
+
+#### <b>Total pass count limits per year</b>
+The box plot shows the total pass count against each year. With this we can fetch the details on maximum and minimum pass counts per year, the meadian pass count and the oustanding pass count values which are shown as outliers (points) per year with the test centre name.<br>
+```{r,echo=FALSE, fig.width=9,fig.height=4}
+p <- plot_ly(passfail, x = passfail$Year, y = passfail$Totalpass, color = ~passfail$Year, type = "box", text = paste("Centre = ", passfail$Centre)) %>%
+  layout(title = "Yearly performance", yaxis = list(title = 'Total Pass Count'), xaxis = list(title = 'Year'))
+p
+```
